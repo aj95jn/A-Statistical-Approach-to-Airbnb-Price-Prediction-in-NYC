@@ -1,0 +1,210 @@
+---
+title: 'm2 : Data Summary and Visualization'
+author: "Ankit Jain, Vaishnavi Badame"
+date: '2020-06-18'
+output:
+  pdf_document: null
+  latex_engine: xelatex
+  word_document: default
+---
+
+## Introduction
+
+In this phase, we summarize and visualize the Airbnb data we have that was taken from
+https://www.kaggle.com/dgomonov/new-york-city-airbnb-open-data. The data set has 16 attributes
+and a total of 48895 rows. In today’s world, Airbnb has become the go to place for people to rent rooms or apartments. The price of any Airbnb is not only dependent on a single factor, but a variety of them like in what neighborhood/location is it located, what is the room type (Private room, shared accommodation or an entire home), minimum nights, if any, what are the reviews/ratings of the listing, and what is its availability throughout the year. These factors are the most common that any user keeps in mind before making a booking. We too have taken these factors into consideration and created summaries and related visualizations. We as a user usually don’t consider about who is the host of the house(given we do not have any host rating) or what is the name of the listing to make booking and as a result, these two attributes along with id, host id have not been considered for visualization purposes.
+
+Since there is a total of 221 unique neighborhoods for the given 5 neighborhoods, we have restricted
+our visualizations on this attribute. But we have tabularized the top and last 5 neighborhoods based on price, in an increasing order of price.
+
+```{r packages}
+#install.packages("ggplot2")
+#install.packages("dplyr")
+#install.packages("reshape2")
+#install.packages("tidyr")
+#install.packages(knitr)
+
+library(ggplot2)
+library(reshape2)
+library(dplyr)
+library(tidyr)
+library(knitr)
+
+options(warn = -1)
+opts_chunk$set(tidy.opts = list(width.cutoff = 50), tidy = TRUE)
+```
+
+Reading the .csv file 
+```{r part1}
+listings <- read.csv("AB_NYC_2019.csv", header = T, stringsAsFactors = T)
+attach(listings)
+```
+
+## Data Preparation
+
+Columns like 'reviews_per_month' and 'last_review' have null values(na) in the dataset. We have substituted these 'na' values as '0' in order to maintain consistency in the dataset.
+
+```{r part2}
+listings[c("reviews_per_month", "last_review")][is.na(listings[c("reviews_per_month", "last_review")])] <- 0
+```
+
+## Data Summary
+Here's a brief summary of the dataset:
+
+```{r part3}
+summary(listings)
+```
+We can see that we have 5 qualitative variables and 11 quantitative variable.
+
+```{r part4}
+listing <- listings[-c(1:9, 13, 14)]
+cormat <- cor(listing)
+cormat
+```
+This is the co-relation matrix for the certain quantitative variables (price, minimum_nights, number_of_reviews, calculated_host_listings_count and availability_365). As we can see, the values for price against all the parameters are low and thus, no single component alone could be used to predict the price. But the combination could be helpful.
+
+```{r part5}
+melted_cormat <- melt(cormat)
+ggplot(data = melted_cormat, aes(x=Var1, y=Var2, 
+                                 fill=value), height = 300 , width = 7) + 
+geom_tile() + labs(title = "Heatmap of correlation matrix",
+                   caption = "Heatmap of correlation matrix") +
+theme(plot.title = element_text(hjust = 0.5),
+plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+
+
+```{r part6}
+aggr <- aggregate(listings[, 10], list(neighbourhood), mean)
+headTail <- as.data.frame(aggr)
+```
+
+List of top 5 neighborhoods based on the listing's increasing order of average price for respective neighborhoods:
+```{r part7}
+head(headTail[order(headTail$x),]) 
+```
+
+List of last 5 neighborhoods based on the listing's increasing order of average price for respective neighborhoods:
+```{r part8}
+tail(headTail[order(headTail$x),])
+```
+
+## Data Visualization
+```{r part9}
+#pairs(listing)
+```
+We've commented pairs because it was taking long time while rendering in pdf.
+
+### Neighbourhood Group
+```{r part10}
+listings %>% ggplot(aes(x = longitude, y = latitude, color= neighbourhood_group)
+                    ,height = 300 , width = 7) + 
+  geom_point() + 
+labs(title = "Longitude versus latidude plot for neighbourhood groups", 
+caption = "Map of different neighbourhood groups") +
+theme(plot.title = element_text(hjust = 0.5), 
+plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+This graph provides us the insight of the locations of the different neighborhood groups based on their co-ordinate values.
+
+```{r part11}
+ggplot(listings, 
+       aes(x = neighbourhood_group, 
+           fill = neighbourhood_group), height = 300 , width = 7) + 
+  geom_bar(position = "stack") + labs(title = "Neighbourhood group versus count",
+       caption = "Number of listings in each neighbourhood group") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+From th graph above we can infer that there are considerably more number of listings in Manhattan and Brooklyn followed by Queens, Bronx and Staten Island. 
+
+```{r part12}
+ggplot(listings, aes(x=factor(neighbourhood_group), y=price, fill=neighbourhood_group), height = 300 , width = 7) + stat_summary(fun="mean", geom="bar") + xlab("Neighbourhood group")+
+  ylab("Average price")+
+  labs(title = "Neighbourhood group versus Price",
+       caption = "Average price of listings in each neighbourhood group") +   theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+Listings in Manhattan have the highest average price followed by the listings in Brooklyn, Staten Island, Queens and Bronx. Thus, based on the neighborhood we can get the approximate average expenditure for the customer in respective neighborhoods.
+
+### Room Type
+```{r part13}
+listings %>% ggplot(aes(x = longitude, y = latitude, color= room_type), height = 300 , width = 7) + geom_point() + labs(title = "Longitude versus latidude plot for room type",
+       caption = "Map of different room_types in NY") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+The above map provides us the distribution of different room types in NY. We can see that there are considerably more listings for 'Entire home/apt' and 'Private Rooms'. Specifically, in Manhattan, a large number of listings are for the 'Entire home/apt' and Bronx has more 'Private' room listings.
+
+```{r part14}
+ggplot(listings, aes(room_type, price, fill=room_type), height = 300 , width = 7) +
+  geom_boxplot(aes(fill = room_type)) +
+  xlab("Room Type") + ylab("Average price") + 
+  ggtitle("Room type versus price") + scale_y_log10() + 
+  labs(title = "Room type versus price", 
+       caption = "Prices for different room types") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+The above box plot gives us the average price for different room types in the dataset. The median for the entire house listing is more than the median for private and shared rooms.
+
+```{r part15}
+ggplot(listings, aes(x = factor(neighbourhood_group), y = price, fill = factor(room_type)), height = 300 , width = 7) + stat_summary(fun="mean", geom = "bar", geom_col="dodge") + 
+  xlab("Neighbourhood group") + 
+  labs(title = "Neighbourhood group versus average price for room types", 
+       caption = "Average prices for room types for different neighbourhood groups") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+
+```
+The above chart tells us about the average price per neighborhood and how that price is broken down further with each neighborhood for each room type. 
+
+
+```{r part16}
+listings %>% ggplot(aes(number_of_reviews), height = 300 , width = 7) + geom_histogram() + facet_wrap(~ neighbourhood_group)  + stat_bin(bins=10) +
+  labs(title = "Number of reviews versus count for neighbourhood groups", 
+       caption = "Neighbourhood group wise graphs showing number of reviews") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+Average number of reviews are more in Manhattan and Brooklyn. We have a very few number of reviews for Bronx and Staten Island.
+
+```{r part17}
+plot(x = number_of_reviews,y = price,
+     xlab = "Reviews",
+     ylab = "Price",
+     xlim = c(0,650),
+     ylim = c(0,10000),		 
+     main = "Reviews versus Price",
+     sub = "Scatterplot of number_of_reviews versus price"
+)
+```
+The scatterplot for number of reviews and the price for the listing shows that there is no concrete relationship between these variables.
+
+### Availability_365
+```{r part18}
+listings %>% ggplot(aes(x = longitude, y = latitude, color= availability_365), height = 300 , width = 7) + geom_point() + 
+  labs(title = "Longitude versus latidude plot for vaailability_365",
+       caption = "Graphical plot to map listing's yearly availability in NY") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+This map shows us the yearly listing availability in NY.
+
+```{r part19}
+listings %>% ggplot(aes(availability_365), height = 300 , width = 7) + geom_histogram() + facet_wrap(~ neighbourhood_group) + stat_bin(bins=10)+
+labs(title = "Availability versus count for neighbourhood groups",
+     caption = "Neighbourhood group wise graphs showing number of reviews") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+This graph gives us an idea of the number of listings available for different number of days. The X-axis shows the number of days of listing availability while the Y-axis gives its count. The availability for listings over a year is more in Manhattan and Brooklyn but at the same time these two neighborhoods have a very large number of listings which which the availability_365 value as zero.
+
+```{r part20}
+ggplot(listings, aes(availability_365, price), height = 300 , width = 7) +
+  geom_point(color = "red") + 
+  geom_segment(aes(x=availability_365, xend=availability_365, y=0, yend=price)) +
+  labs(title = " Availability Versus Price", x ="Yearly Availability", y= "Price", caption = "Graph of yearly availability of listing against the price")+
+  theme(plot.title = element_text(hjust = 0.5),   plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+Here we can infer that there is no direct relationship among price and availability around the year. The yearly availability might be high and the price may still be low and the vice-versa. 

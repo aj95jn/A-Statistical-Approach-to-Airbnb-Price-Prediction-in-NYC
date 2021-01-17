@@ -1,0 +1,534 @@
+---
+title: 'A Statistical Approach to Airbnb Price Prediction in NYC'
+author: 'Ankit Jain, Vaishnavi Badame'
+date: '2020-07-15'
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+  
+## Problem Description
+Airbnb is one of the most widely used application to rent rooms or apartments. Everyone wants to enjoy their vacation that has an amazing view, great location or neighborhood, all the basic facilities/amenities and maybe some luxury facilities included in their stay at a reasonable price. The price is not determined by a single factor, but a combination of them focusing on customer needs and requirements. What if there was a system that considered these
+requirements/factors a person has in mind while making a booking and use it to predict the
+price of an Airbnb? We propose to develop such a model that helps user predict prices of an
+Airbnb in NYC. This would enhance a user’s search experience and would possibly create more
+customer traction for Airbnb.
+
+
+## Dataset Description
+We have downloaded the data set from: https://www.kaggle.com/dgomonov/new-york-city-airbnb-open-data which is in .csv format. This data set was updated in 2019. The data set comprises of 48,895 records of different Airbnb listings around the neighborhoods of NYC. It has 16 variables, out of which 10 are quantitative and the remaining 6 are qualitative. Following are the variables in the data set
+
+* id: Unique id assigned to Airbnb record/listing 
+* name: Name of the record (Airbnb house/listing)
+* host_id: Unique host id
+* hostname: Host name
+* neighborhood_group: Area of the listing
+* neighborhood: Specific area in the neighborhood_group
+* latitude: Latitude of the listing
+* longitude: Longitude of the listing
+* room_type: The type of room provided (either entire house/private room/shared room)
+* price: Price of the listing
+* minimum_nights: Minimum number of nights the user is required to book the listing
+* number_of_reviews: Number of user reviews
+* last_review: Date when the last review was given by the user
+* reviews_per_month:Number of reviews per month
+* calculated_host_listings_count: Number of listings by hosts
+* availability_365: Number of days in a year when the listing is open for booking
+
+The data, initially, resides in a single csv file. We plan on segregating the data into training and test data in a ratio of 70:30 respectively as any model that is built, needs to be trained and then tested.  
+
+  
+## System Functionality and Usability
+We propose to build a system that will use factors such as neighborhood_group, room type, minimum nights to stay, number of reviews, when was the last review posted, rating(reviews per month), to predict the final price of an Airbnb using supervised learning algorithms. We plan on developing a linear regression model that will predict the price based on factors such as stated above. Along with this core algorithm we are also planning to implement logistic regression, step-wise regression, Lasso regression and Ridge Regression algorithms as a part of performance comparison with the core algorithm. 
+
+The system will be helpful to any customer willing to make a booking via the Airbnb application or website. It will also be very helpful to first-time customers who have little or no knowledge about Airbnb and on what factors Airbnb decides their prices. This will give them an insight into the factors determining the pricing and make a decision accordingly. This system also has a direct impact in improving Airbnb sales as users decision making is enhanced by being well informed about their budgets and requirements.
+
+## Introduction
+
+In this phase, we summarize and visualize the Airbnb data we have that was taken from
+https://www.kaggle.com/dgomonov/new-york-city-airbnb-open-data. The data set has 16 attributes
+and a total of 48895 rows. In today’s world, Airbnb has become the go to place for people to rent rooms or apartments. The price of any Airbnb is not only dependent on a single factor, but a variety of them like in what neighborhood/location is it located, what is the room type (Private room, shared accommodation or an entire home), minimum nights, if any, what are the reviews/ratings of the listing, and what is its availability throughout the year. These factors are the most common that any user keeps in mind before making a booking. We too have taken these factors into consideration and created summaries and related visualizations. We as a user usually don’t consider about who is the host of the house(given we do not have any host rating) or what is the name of the listing to make booking and as a result, these two attributes along with id, host id have not been considered for visualization purposes.
+
+Since there is a total of 221 unique neighborhoods for the given 5 neighborhoods, we have restricted
+our visualizations on this attribute. But we have tabularized the top and last 5 neighborhoods based on price, in an increasing order of price.
+
+```{r packages}
+#install.packages("ggplot2")
+#install.packages("dplyr")
+#install.packages("reshape2")
+#install.packages("tidyr")
+#install.packages(knitr)
+
+library(ggplot2)
+library(reshape2)
+library(dplyr)
+library(tidyr)
+library(knitr)
+
+options(warn = -1)
+opts_chunk$set(tidy.opts = list(width.cutoff = 50), tidy = TRUE)
+```
+
+Reading the .csv file 
+```{r part1}
+setwd("/Users/ANKIT JAIN/Documents/R")
+listings <- read.csv("AB_NYC_2019.csv", header = T, stringsAsFactors = T)
+attach(listings)
+```
+
+## Data Preparation
+
+Columns like 'reviews_per_month' and 'last_review' have null values(na) in the dataset. We have substituted these 'na' values as '0' in order to maintain consistency in the dataset.
+
+```{r part2}
+listings[c("reviews_per_month", "last_review")][is.na(listings[c("reviews_per_month", "last_review")])] <- 0
+```
+
+## Data Summary
+Here's a brief summary of the dataset:
+
+```{r part3}
+summary(listings)
+```
+We can see that we have 5 qualitative variables and 11 quantitative variable.
+
+```{r part4}
+listing <- listings[-c(1:9, 13, 14)]
+cormat <- cor(listing)
+cormat
+```
+This is the co-relation matrix for the certain quantitative variables (price, minimum_nights, number_of_reviews, calculated_host_listings_count and availability_365). As we can see, the values for price against all the parameters are low and thus, no single component alone could be used to predict the price. But the combination could be helpful.
+
+```{r part5}
+melted_cormat <- melt(cormat)
+ggplot(data = melted_cormat, aes(x=Var1, y=Var2, 
+                                 fill=value), height = 300 , width = 7) + 
+geom_tile() + labs(title = "Heatmap of correlation matrix",
+                   caption = "Heatmap of correlation matrix") +
+theme(plot.title = element_text(hjust = 0.5),
+plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+
+
+```{r part6}
+aggr <- aggregate(listings[, 10], list(neighbourhood), mean)
+headTail <- as.data.frame(aggr)
+```
+
+List of top 5 neighborhoods based on the listing's increasing order of average price for respective neighborhoods:
+```{r part7}
+head(headTail[order(headTail$x),]) 
+```
+
+List of last 5 neighborhoods based on the listing's increasing order of average price for respective neighborhoods:
+```{r part8}
+tail(headTail[order(headTail$x),])
+```
+
+## Data Visualization
+```{r part9}
+#pairs(listing)
+```
+We've commented pairs because it was taking long time while rendering in pdf.
+
+### Neighbourhood Group
+```{r part10}
+listings %>% ggplot(aes(x = longitude, y = latitude, color= neighbourhood_group)
+                    ,height = 300 , width = 7) + 
+  geom_point() + 
+labs(title = "Longitude versus latidude plot for neighbourhood groups", 
+caption = "Map of different neighbourhood groups") +
+theme(plot.title = element_text(hjust = 0.5), 
+plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+This graph provides us the insight of the locations of the different neighborhood groups based on their co-ordinate values.
+
+```{r part11}
+ggplot(listings, 
+       aes(x = neighbourhood_group, 
+           fill = neighbourhood_group), height = 300 , width = 7) + 
+  geom_bar(position = "stack") + labs(title = "Neighbourhood group versus count",
+       caption = "Number of listings in each neighbourhood group") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+From th graph above we can infer that there are considerably more number of listings in Manhattan and Brooklyn followed by Queens, Bronx and Staten Island. 
+
+```{r part12}
+ggplot(listings, aes(x=factor(neighbourhood_group), y=price, fill=neighbourhood_group), height = 300 , width = 7) + stat_summary(fun="mean", geom="bar") + xlab("Neighbourhood group")+
+  ylab("Average price")+
+  labs(title = "Neighbourhood group versus Price",
+       caption = "Average price of listings in each neighbourhood group") +   theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+Listings in Manhattan have the highest average price followed by the listings in Brooklyn, Staten Island, Queens and Bronx. Thus, based on the neighborhood we can get the approximate average expenditure for the customer in respective neighborhoods.
+
+### Room Type
+```{r part13}
+listings %>% ggplot(aes(x = longitude, y = latitude, color= room_type), height = 300 , width = 7) + geom_point() + labs(title = "Longitude versus latidude plot for room type",
+       caption = "Map of different room_types in NY") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+The above map provides us the distribution of different room types in NY. We can see that there are considerably more listings for 'Entire home/apt' and 'Private Rooms'. Specifically, in Manhattan, a large number of listings are for the 'Entire home/apt' and Bronx has more 'Private' room listings.
+
+```{r part14}
+ggplot(listings, aes(room_type, price, fill=room_type), height = 300 , width = 7) +
+  geom_boxplot(aes(fill = room_type)) +
+  xlab("Room Type") + ylab("Average price") + 
+  ggtitle("Room type versus price") + scale_y_log10() + 
+  labs(title = "Room type versus price", 
+       caption = "Prices for different room types") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+The above box plot gives us the average price for different room types in the dataset. The median for the entire house listing is more than the median for private and shared rooms.
+
+```{r part15}
+ggplot(listings, aes(x = factor(neighbourhood_group), y = price, fill = factor(room_type)), height = 300 , width = 7) + stat_summary(fun="mean", geom = "bar", geom_col="dodge") + 
+  xlab("Neighbourhood group") + 
+  labs(title = "Neighbourhood group versus average price for room types", 
+       caption = "Average prices for room types for different neighbourhood groups") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+
+```
+The above chart tells us about the average price per neighborhood and how that price is broken down further with each neighborhood for each room type. 
+
+
+```{r part16}
+listings %>% ggplot(aes(number_of_reviews), height = 300 , width = 7) + geom_histogram() + facet_wrap(~ neighbourhood_group)  + stat_bin(bins=10) +
+  labs(title = "Number of reviews versus count for neighbourhood groups", 
+       caption = "Neighbourhood group wise graphs showing number of reviews") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+Average number of reviews are more in Manhattan and Brooklyn. We have a very few number of reviews for Bronx and Staten Island.
+
+```{r part17}
+plot(x = number_of_reviews,y = price,
+     xlab = "Reviews",
+     ylab = "Price",
+     xlim = c(0,650),
+     ylim = c(0,10000),		 
+     main = "Reviews versus Price",
+     sub = "Scatterplot of number_of_reviews versus price"
+)
+```
+The scatterplot for number of reviews and the price for the listing shows that there is no concrete relationship between these variables.
+
+### Availability_365
+```{r part18}
+listings %>% ggplot(aes(x = longitude, y = latitude, color= availability_365), height = 300 , width = 7) + geom_point() + 
+  labs(title = "Longitude versus latidude plot for vaailability_365",
+       caption = "Graphical plot to map listing's yearly availability in NY") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+This map shows us the yearly listing availability in NY.
+
+```{r part19}
+listings %>% ggplot(aes(availability_365), height = 300 , width = 7) + geom_histogram() + facet_wrap(~ neighbourhood_group) + stat_bin(bins=10)+
+labs(title = "Availability versus count for neighbourhood groups",
+     caption = "Neighbourhood group wise graphs showing number of reviews") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+This graph gives us an idea of the number of listings available for different number of days. The X-axis shows the number of days of listing availability while the Y-axis gives its count. The availability for listings over a year is more in Manhattan and Brooklyn but at the same time these two neighborhoods have a very large number of listings which which the availability_365 value as zero.
+
+```{r part20}
+ggplot(listings, aes(availability_365, price), height = 300 , width = 7) +
+  geom_point(color = "red") + 
+  geom_segment(aes(x=availability_365, xend=availability_365, y=0, yend=price)) +
+  labs(title = " Availability Versus Price", x ="Yearly Availability", y= "Price", caption = "Graph of yearly availability of listing against the price")+
+  theme(plot.title = element_text(hjust = 0.5),   plot.caption = element_text(hjust = 0.5, face = "bold"))
+```
+Here we can infer that there is no direct relationship among price and availability around the year. The yearly availability might be high and the price may still be low and the vice-versa. 
+
+## Milestone 3: Algorithm Testing.
+
+In this phase we emphasize on testing the candidate algorithms. The variables considered for predicting the price are neighborhood_group, latitude, longitude, room_type, minimum nights, number_of_reviews, availability_365 and reviews_per_month. We have worked with these primarily as these are the factors usually considered when anyone generally rents an Airbnb. The variables like id, name, host_name, host_id, have been left out as they do not contribute to the price. Our candidate algorithms are:
+a) Best Subset Selection
+b) Step Wise Selection (Forward and Backward)
+c) Lasso Regression
+d) Ridge Regression
+e) Elastic Net Regression and 
+f) Random forest
+
+```{r part22untuned}
+train_ind = sample(seq_len(nrow(listings)),size = 34218) 
+train_untuned =listings[train_ind,] 
+test_untuned=listings[-train_ind,] 
+```
+
+Tuning the dataset by removing rows where price is 0. Probably incorrect record
+
+```{r part21}
+listings$last_review <- NULL
+listings <-listings %>% 
+  filter(price < quantile(listings$price, 0.9) & price > quantile(listings$price, 0.1)) %>% 
+  drop_na()
+listings<-listings[!(listings$price == 0),] 
+set.seed(123)   
+```
+
+Dividing the dataset into test and train 
+```{r part22}
+train_ind = sample(seq_len(nrow(listings)),size = 34218) 
+train =listings[train_ind,] 
+test=listings[-train_ind,] 
+```
+
+## Best subset regression
+
+We perform the best subset selection using all possible variables as mentioned. We find that the mean squared error is minimum when we have at the 8th model when we have all variables or dimensions considered, implying all variables are considerable in prediction of the price, which is also confirmed by the plot below. Since we have 8 variables, the number of models is still fine, but this approach is impractical when number of predictors are huge as the total models will be 2^10.
+
+```{r part23}
+library(leaps)
+#best subset regression
+regfit.full <- regsubsets(price ~ neighbourhood_group + latitude + longitude + room_type + 
+                            minimum_nights  + number_of_reviews + 
+                            reviews_per_month + availability_365, data = train)
+test.mat <- model.matrix(price ~ neighbourhood_group + latitude + longitude + room_type + 
+                           minimum_nights  + number_of_reviews + 
+                           reviews_per_month + availability_365, data = test)
+val.errors.full <- rep(NA, 8)
+for (i in 1:8) {
+  coeficients <- coef(regfit.full, id = i)
+  pred <- test.mat[, names(coeficients)] %*% coeficients
+  val.errors.full[i] <- mean((test$price-pred)^2)
+}
+val.errors.full
+which.min(val.errors.full)
+plot(val.errors.full, xlab = "Number of predictors", ylab = "Training MSE", type = 'b')
+```
+
+## Step Wise Selection
+
+We perform the forward and backward selection as shown above. We can see the MSE value is minimum when all variables are considered. When we see the error values for best fit, forward and backward, the best performance is for forward selection and best subset selection.
+
+```{r part24}
+fwd_model <- regsubsets(price ~ neighbourhood_group + latitude + longitude + room_type + 
+                      minimum_nights  + number_of_reviews + 
+                      reviews_per_month + availability_365, data = train, method = "forward")
+test.fwd.mat <- model.matrix(price ~ neighbourhood_group + latitude + longitude + 
+                      room_type + minimum_nights  + number_of_reviews + 
+                      reviews_per_month + availability_365, data = test)
+val.errors.fwd <- rep(NA, 8)
+for (i in 1:8) {
+  coeficients <- coef(fwd_model, id = i)
+  pred <- test.fwd.mat[, names(coeficients)] %*% coeficients
+  val.errors.fwd[i] <- mean((test$price-pred)^2)
+}
+val.errors.fwd
+which.min(val.errors.fwd)
+plot(val.errors.fwd, xlab = "Number of predictors", ylab = "Training MSE", type = 'b')
+```
+
+```{r part25}
+bwd_model <- regsubsets(price ~ neighbourhood_group + latitude + longitude + room_type +
+                          minimum_nights  + number_of_reviews + 
+                          reviews_per_month + availability_365, 
+                        data = train, method = "backward")
+test.bwd.mat <- model.matrix(price ~ neighbourhood_group + latitude + longitude +
+                          room_type + minimum_nights  + number_of_reviews + 
+                          reviews_per_month + availability_365, data = test)
+val.errors.bwd <- rep(NA, 8)
+for (i in 1:8) {
+  coeficients <- coef(bwd_model, id = i)
+  pred <- test.bwd.mat[, names(coeficients)] %*% coeficients
+  val.errors.bwd[i] <- mean((test$price-pred)^2)
+}
+val.errors.bwd
+which.min(val.errors.bwd)
+plot(val.errors.bwd, xlab = "Number of predictors", ylab = "Training MSE", type = 'b')
+```
+
+```{r part26}
+attach(listings)
+system("clear")
+library(glmnet)
+x <- model.matrix(listings$price~listings$neighbourhood_group+listings$latitude+
+                    listings$longitude+listings$room_type+listings$minimum_nights+
+                    listings$number_of_reviews+listings$reviews_per_month+
+                    listings$availability_365)
+y <- listings$price
+x_train <- model.matrix(train$price~train$neighbourhood_group+train$room_type+
+                     train$latitude+train$longitude+train$minimum_nights+
+                     train$number_of_reviews+train$reviews_per_month+
+                     train$availability_365,train)[,-1]
+y_train <- train$price
+x_test <- model.matrix(test$price~test$neighbourhood_group+test$room_type+
+                    test$latitude+test$longitude+test$minimum_nights+
+                    test$number_of_reviews+test$reviews_per_month+
+                    test$availability_365,test)[,-1]
+y_test<- test$price
+```
+
+## Ridge Regression
+
+In ridge regression, the variables which do not have a considerable contribution are given the coefficients close to value 0.Hence it shrinks the regression coefficients assuming that the predictors are standardized. Ridge regression penalizes with L2-norm penalty for shrinking the coefficients.We can tune this penalty by selecting a good value of lambda. The alpha value for Lasso regression in glmnet() is 0.
+
+```{r part27}
+library(DMwR)
+ridge.mod  <- glmnet(x_train,y_train,alpha=0,thresh=1e-12)
+cv.out <- cv.glmnet(x_train,y_train,alpha=0)
+plot(cv.out)
+plot(cv.out$glmnet.fit, xvar="lambda", label=TRUE)
+legend("bottomright", lwd = 1, col = 1:6, legend = colnames(x), cex = .4)
+bestlam <- cv.out$lambda.min
+bestlam
+ridge.pred <- predict(ridge.mod,s=bestlam,newx=x_test)
+mean((ridge.pred-y_test)^2)
+out <- glmnet(x,y,alpha=0)
+predict(out,type="coefficients",s=bestlam)
+regr.eval(trues = y_test, preds = ridge.pred)
+```
+
+## Lasso Regression
+
+In lasso regression, the variables which do not have a considerable contribution are given the coefficients equal to value 0.Hence it shrinks the regression coefficients assuming that the predictors are standardized. Ridge regression penalizes with L1-norm penalty for shrinking the coefficients.We can tune this penalty by selecting a good value of lambda. The alpha value for Lasso regression in glmnet() is 1.
+
+```{r part28}
+lasso.mod  <- glmnet(x_train,y_train,alpha=1,thresh=1e-12)
+cv.out  <- cv.glmnet(x_train,y_train,alpha=1)
+plot(cv.out)
+plot(cv.out$glmnet.fit, xvar="lambda", label=TRUE)
+legend("bottomright", lwd = 1, col = 1:6, legend = colnames(x), cex = .4)
+bestlam <- cv.out$lambda.min
+bestlam
+lasso.pred <- predict(lasso.mod,s=bestlam,newx=x_test)
+mean((ridge.pred-y_test)^2)
+out <- glmnet(x,y,alpha=1)
+predict(out,type="coefficients",s=bestlam)
+regr.eval(trues = y_test, preds = lasso.pred)
+```
+
+## Elatic Net Regression
+
+The Elastic Net regression combines the penalties of both - ridge regression and lasso regression. 
+
+```{r part29}
+elnet.mod  <- glmnet(x_train,y_train,alpha=0.5,thresh=1e-12)
+cv.out  <- cv.glmnet(x_train,y_train,alpha=0.5)
+plot(cv.out)
+plot(cv.out$glmnet.fit, xvar="lambda", label=TRUE)
+legend("bottomright", lwd = 1, col = 1:6, legend = colnames(x), cex = .4)
+bestlam <- cv.out$lambda.min
+bestlam
+elnet.pred <- predict(elnet.mod,s=bestlam,newx=x_test)
+mean((elnet.pred-y_test)^2)
+out <- glmnet(x,y,alpha=0.5)
+predict(out,type="coefficients",s=bestlam)
+regr.eval(trues = y_test, preds = elnet.pred)
+```
+
+## Random forest
+
+Random Forests is a very nice technique to fit a more Accurate Model by averaging lots of decision trees and reducing the Variance and avoiding overfitting problem in Trees.
+
+We have run the random forest technique for the variables we listed above for the training data set and it will by default run for 500 decision trees (list all variables we are doing regression and other algorithms on if not written at top of this phase). The process to run code takes a long time, as a result, we are concluding the results as below:
+The above Mean Squared Error and Variance explained are calculated Out of Bag Error Estimation. Also, the number of variables randomly selected at each split is 2. 
+
+Now we can compare the Out of Bag Sample Errors and Error on Test set. The above Random Forest model chose Randomly 2 variables to be considered at each split. We could now try all 8 predictors which can be found at each split. We iterate it 8 times for all predictors. Again, as the cod takes a long time to do this, here are the conclusions and the image of the chart:
+The Red line is the Out of Bag Error Estimates and the Blue Line is the Error calculated on Test Set. The Error Tends to be minimized at around 2. On the Extreme Right Hand Side of the above plot, we considered all possible 13 predictors at each Split which is only Bagging.
+
+```{r part30}
+#library(randomForest)
+#require(caTools)
+
+#rf <- randomForest(
+#   price~neighbourhood_group+latitude+longitude+room_type+
+#minimum_nights+number_of_reviews+reviews_per_month+availability_365,
+#  data=train
+#)
+#rf
+#plot(rf)
+#varImpPlot(rf)
+#pred <-predict(rf, newdata = test, type="response")
+#which.min(rf$mse)
+
+#oob.err=double(8)
+#test.err=double(8)
+
+#mtry is no of Variables randomly chosen at each split
+#for(mtry in 1:8) 
+#{
+#  rf=randomForest(price~neighbourhood_group+latitude+longitude+
+#room_type+minimum_nights+number_of_reviews+
+#reviews_per_month+availability_365, 
+#data #= listings, subset = train,mtry=mtry,ntree=500) 
+#  oob.err[mtry] = rf$mse[500] #Error of all Trees fitted
+  
+#  pred<-predict(rf,test) #Predictions on Test Set for each Tree
+#  test.err[mtry]= with(test, mean( (price - pred)^2)) 
+#Mean Squared Test Error
+  
+#  cat(mtry," ") #printing the output to the console
+  
+#}
+```
+
+![MSE for Random Forest Regression](/Users/ANKIT JAIN/Documents/R/RandomForestMSE.png)
+
+This plot shows the Error and the Number of Trees. The error drops as the number of trees increase and the minimum is at 500 no. of trees.
+
+![Random Forest Regression](/Users/ANKIT JAIN/Documents/R/randomforest.png)
+
+## Milestone 4: Core Algorithm Fine Tuning
+
+In this phase of the project, we will be fine tuning the core algorithm, Linear Regression. To fine tune,
+we have cleansed our data a little more, handled multicollinearity and considered the polynomial
+regression terms. All these have attributed to improving Linear Regression.
+
+Data Cleaning: we have excluded the outliers in the dataset as outliers can greatly affect the slope of the
+regression line. An outlier may represent bad or incorrect data.(Code chunk:part21)
+
+Handling Multicollinearity: The coefficient estimates can swing wildly based on which other independent
+variables are in the model. The coefficients become very sensitive to small changes in the model. It also
+reduces the precision of the estimate coefficients, which weakens the statistical power of your
+regression model. You might not be able to trust the p-values to identify independent variables that are
+statistically significant.We can see the output of code chunk 31 that the values of each of the attributes is small, so multicollinearity is not an issue with our dataset.
+
+Polynomial Transformations: We have transformed the variables using different polynomial functions so as to 
+get a smaller p-value and thus tuning the algorithm by reducing values of MAE, MSE and RMSE altogether.
+
+## Core algorithm: Linear Regression
+
+Linear Regression without Fine Tuning: 
+
+```{r part31}
+library(car)
+linear.mod <- lm(price~neighbourhood_group+latitude+longitude+room_type+
+minimum_nights+number_of_reviews+reviews_per_month+availability_365,data=train_untuned)
+car::vif(linear.mod)
+pred1 <- predict(linear.mod, newdata = test_untuned)
+summary(linear.mod)
+actuals_preds <- data.frame(cbind(actuals=test$price, predicteds=pred1)) 
+regr.eval(actuals_preds$actuals, actuals_preds$predicteds)
+```
+
+
+Fine Tuning:
+
+Linear Regression with Fine Tuning:
+
+```{r part32}
+linear.mod <- lm(price~neighbourhood_group*latitude*longitude+room_type+
+log(sqrt(minimum_nights)+sqrt(sqrt(number_of_reviews)))+reviews_per_month*sqrt(availability_365),data=train)
+pred1 <- predict(linear.mod, newdata = test)
+summary(linear.mod)
+actuals_preds <- data.frame(cbind(actuals=test$price, predicteds=pred1)) 
+regr.eval(actuals_preds$actuals, actuals_preds$predicteds)
+```
+
+## Algorithm Comparisons: 
+
+![Algorithm Comparison Table](/Users/ANKIT JAIN/Documents/R/algoComparisons.png)
+
+Mean Absolute Error (MAE): Provides the average magnitude of the errors and does not consider it's direction. 
+Root mean squared error (RMSE):  Provides square root of the average of squared differences between predicted values and actual values.
+Mean Square Error (MSE): Provides average of the square of the difference between predicted values and actual values.
+Mean Absolute Percentage Error (MAPE): measures the size of the error in percentage terms. It is calculated as the average of the unsigned percentage error.
+
+Thus by taking a look at the different values in the above table we can understand that the worst performing algorithm among all the above algorithm is the linear regression without tuning it has the highest MSE. While the same algorithm when fine tuned gives us the best values for MAE, MSE, MAPE and RMSE as compared to the other regression algorithms indicating it to be a better fit. Among the other candidate algorithms i.e Lasso Regression, Ridge Regression and Elastic Regression algorithm the performance has a very little variance. The performance of the above algorithms can be arranged as: Linear(with fine tuning) > Elastic Net > Lasso > Ridge > Linear(without fine tuning).

@@ -1,0 +1,48 @@
+---
+title: 'A Statistical Approach to Airbnb Price Prediction in NYC'
+author: 'Ankit Jain, Vaishnavi Badame'
+date: '2020-06-07'
+output:
+  pdf_document:
+  latex_engine: xelatex
+---
+  
+## Problem Description
+Airbnb is one of the most widely used application to rent rooms or apartments. Everyone wants to enjoy their vacation that has an amazing view, great location or neighborhood, all the basic facilities/amenities and maybe some luxury facilities included in their stay at a reasonable price. The price is not determined by a single factor, but a combination of them focusing on customer needs and requirements. What if there was a system that considered these
+requirements/factors a person has in mind while making a booking and use it to predict the
+price of an Airbnb? We propose to develop such a model that helps user predict prices of an
+Airbnb in NYC. This would enhance a user’s search experience and would possibly create more
+customer traction for Airbnb.
+
+
+## Dataset Description
+We have downloaded the data set from: https://www.kaggle.com/dgomonov/new-york-city-airbnb-open-data which is in .csv format. This data set was updated in 2019. The data set comprises of 48,895 records of different Airbnb listings around the neighborhoods of NYC. It has 16 variables, out of which 10 are quantitative and the remaining 6 are qualitative. Following are the variables in the data set
+
+* id: Unique id assigned to Airbnb record/listing 
+* name: Name of the record (Airbnb house/listing)
+* host_id: Unique host id
+* hostname: Host name
+* neighborhood_group: Area of the listing
+* neighborhood: Specific area in the neighborhood_group
+* latitude: Latitude of the listing
+* longitude: Longitude of the listing
+* room_type: The type of room provided (either entire house/private room/shared room)
+* price: Price of the listing
+* minimum_nights: Minimum number of nights the user is required to book the listing
+* number_of_reviews: Number of user reviews
+* last_review: Date when the last review was given by the user
+* reviews_per_month:Number of reviews per month
+* calculated_host_listings_count: Number of listings by hosts
+* availability_365: Number of days in a year when the listing is open for booking
+
+The data, initially, resides in a single csv file. We plan on segregating the data into training and test data in a ratio of 70:30 respectively as any model that is built, needs to be trained and then tested.  
+
+  
+## System Functionality and Usability
+We propose to build a system that will use factors such as neighborhood_group, room type, minimum nights to stay, number of reviews, when was the last review posted, rating(reviews per month), to predict the final price of an Airbnb using supervised learning algorithms. We plan on developing a linear regression model that will predict the price based on factors such as stated above. Along with this core algorithm we are also planning to implement logistic regression, step-wise regression, Lasso regression and Ridge Regression algorithms as a part of performance comparison with the core algorithm. 
+
+The system will be helpful to any customer willing to make a booking via the Airbnb application or website. It will also be very helpful to first-time customers who have little or no knowledge about Airbnb and on what factors Airbnb decides their prices. This will give them an insight into the factors determining the pricing and make a decision accordingly. This system also has a direct impact in improving Airbnb sales as users decision making is enhanced by being well informed about their budgets and requirements.
+
+
+
+
